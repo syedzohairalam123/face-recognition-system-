@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Exec(pip install)",
+      "Exec(ls)",
+      "Exec(Get-ChildItem)"
+    ]
+  }
+}

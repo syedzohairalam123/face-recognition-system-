@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Add User - Face Attendance{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="mb-1 fw-bold">
+            <i class="bi bi-person-plus me-2 text-primary"></i>Add New User
+        </h2>
+        <p class="text-muted mb-0">Register a new employee in the system</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('user.list_users') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Back to Users
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-form me-2"></i>User Information
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('user.add_user') }}" id="addUserForm">
+                    <!-- Personal Information -->
+                    <h6 class="text-muted mb-3"><i class="bi bi-person me-2"></i>Personal Information</h6>
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label for="employee_id" class="form-label">Employee ID <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="employee_id" name="employee_id" placeholder="e.g., EMP001" required>
+                            <div class="form-text">Unique identifier for the employee</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="employee@company.com" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-3">
+                            <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="e.g., +1234567890">
+                        </div>
+                    </div>
+
+                    <!-- Work Information -->
+                    <h6 class="text-muted mb-3"><i class="bi bi-building me-2"></i>Work Information</h6>
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-3">
+                            <label for="department" class="form-label">Department</label>
+                            <input type="text" class="form-control" id="department" name="department" placeholder="e.g., Engineering">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role">
+                                <option value="employee">Employee</option>
+                                <option value="manager">Manager</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Face Registration Info -->
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Note:</strong> After creating the user, you can register their face for recognition from the user profile page.
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('user.list_users') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="bi bi-check-lg me-2"></i>Create User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('addUserForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('submitBtn');
+    setButtonLoading(btn, true, 'Creating...');
+});
+</script>
+{% endblock %}

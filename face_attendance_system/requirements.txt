@@ -1,0 +1,21 @@
+# Face Recognition Attendance System - Dependencies
+
+# Core Flask
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.1.0
+
+# Database
+SQLAlchemy>=2.0.0
+
+# Face Recognition (requires dlib - may need cmake and C++ compiler)
+face-recognition>=1.3.0
+
+# Computer Vision
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Utilities
+Werkzeug>=3.0.0
+
+# Report Export
+openpyxl>=3.1.0

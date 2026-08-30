@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Face Attendance{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="mb-1 fw-bold">
+            <i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard
+        </h2>
+        <p class="text-muted mb-0">Welcome back, {{ session.get('user_name', 'Guest') }}!</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <span class="time-display" id="currentTime"></span>
+    </div>
+</div>
+
+<!-- Stats Cards: total users, present, late, absent, today's attendance -->
+<div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3 mb-4">
+    <div class="col">
+        <div class="card stat-card primary h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-people"></i></div>
+                    <div>
+                        <div class="stat-value text-primary">{{ user_stats.total_users }}</div>
+                        <div class="stat-label">Registered Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card stat-card success h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-person-check"></i></div>
+                    <div>
+                        <div class="stat-value text-success">{{ stats.total_present }}</div>
+                        <div class="stat-label">Present Today</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card stat-card warning h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-alarm"></i></div>
+                    <div>
+                        <div class="stat-value text-warning">{{ stats.total_late }}</div>
+                        <div class="stat-label">Late Today</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card stat-card info h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-person-dash"></i></div>
+                    <div>
+                        {% set absent = stats.total_active_users - stats.total_checked_in %}
+                        <div class="stat-value {{ 'text-info' if absent >= 0 else 'text-danger' }}">
+                            {{ absent if absent >= 0 else 0 }}
+                        </div>
+                        <div class="stat-label">Absent Today</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card stat-card secondary h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-percent"></i></div>
+                    <div>
+                        <div class="stat-value">{{ stats.attendance_rate }}%</div>
+                        <div class="stat-label">Attendance Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions & Recent Activity -->
+<div class="row g-4">
+    <!-- Quick Actions -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-lightning-fill me-2 text-warning"></i>Quick Actions
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('user.add_user') }}" class="btn btn-success">
+                        <i class="bi bi-person-plus me-2"></i>Register User
+                    </a>
+                    <a href="{{ url_for('user.list_users', status='face_pending') }}" class="btn btn-outline-success">
+                        <i class="bi bi-camera me-2"></i>Enroll Face
+                        <span class="badge bg-warning text-dark ms-2">{{ user_stats.face_pending }} pending</span>
+                    </a>
+                    <a href="{{ url_for('main.camera') }}" class="btn btn-primary">
+                        <i class="bi bi-camera-video me-2"></i>Start Attendance
+                    </a>
+                    <a href="{{ url_for('attendance.today') }}" class="btn btn-info">
+                        <i class="bi bi-calendar-check me-2"></i>View Records
+                    </a>
+                    <a href="{{ url_for('main.reports') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-graph-up me-2"></i>View Reports
+                    </a>
+                </div>
+
+                <!-- System Status (live) -->
+                <hr class="my-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small fw-semibold text-muted">
+                        <i class="bi bi-activity me-1"></i>System Status
+                    </span>
+                    <button class="btn btn-sm btn-link p-0 text-muted" onclick="refreshSystemStatus()" title="Refresh status">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                <div class="small" id="systemStatusSection">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted"><i class="bi bi-camera-video me-1"></i>Camera</span>
+                        <span class="badge bg-secondary" id="statusCamera">Checking…</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted"><i class="bi bi-cpu me-1"></i>Recognition Engine</span>
+                        <span class="badge bg-secondary" id="statusEngine">Checking…</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted"><i class="bi bi-database me-1"></i>Database</span>
+                        <span class="badge bg-secondary" id="statusDatabase">Checking…</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Attendance -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clock-history me-2"></i>Recent Attendance</span>
+                <span class="badge bg-primary">{{ records|length }} records today</span>
+            </div>
+            <div class="card-body p-0">
+                {% if records %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th class="d-none d-md-table-cell">Department</th>
+                                <th>Check In</th>
+                                <th class="d-none d-lg-table-cell">Check Out</th>
+                                <th>Status</th>
+                                <th class="d-none d-lg-table-cell">Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                            <tr class="animate-fadeIn" style="animation-delay: {{ loop.index0 * 0.05 }}s">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar me-2" style="width: 36px; height: 36px; font-size: 0.875rem;">
+                                            {{ record.employee_name[0] if record.employee_name else '?' }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold">{{ record.employee_name }}</div>
+                                            <small class="text-muted d-md-none">{{ record.department or '-' }}</small>
+                                            <small class="text-muted d-none d-md-inline">{{ record.employee_id }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="d-none d-md-table-cell">{{ record.department or '-' }}</td>
+                                <td><span class="text-muted">{{ record.check_in_time }}</span></td>
+                                <td class="d-none d-lg-table-cell"><span class="text-muted">{{ record.check_out_time or '-' }}</span></td>
+                                <td>
+                                    <span class="badge bg-{{ record.status_color }}">
+                                        <i class="bi bi-{% if record.status == 'present' %}check-circle{% elif record.status == 'late' %}alarm{% elif record.status == 'checked_out' %}clock{% else %}x-circle{% endif %} me-1"></i>
+                                        {{ record.status|replace('_', ' ')|title }}
+                                    </span>
+                                </td>
+                                <td class="d-none d-lg-table-cell">
+                                    {% if record.confidence_score %}
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress flex-grow-1 me-2" style="width: 60px; height: 6px;">
+                                            <div class="progress-bar bg-{{ 'success' if record.confidence_score > 0.9 else 'warning' }}" style="width: {{ record.confidence_score * 100 }}%"></div>
+                                        </div>
+                                        <small class="text-muted">{{ "%.0f"|format(record.confidence_score * 100) }}%</small>
+                                    </div>
+                                    {% else %}
+                                    <small class="text-muted">-</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer bg-white text-end">
+                    <a href="{{ url_for('attendance.today') }}" class="btn btn-sm btn-outline-primary">
+                        View All Records <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <h5>No Records Today</h5>
+                    <p>Start by opening the camera to mark attendance</p>
+                    <a href="{{ url_for('main.camera') }}" class="btn btn-primary">
+                        <i class="bi bi-camera-video me-2"></i>Start Attendance
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update time every second
+function updateTime() {
+    const now = new Date();
+    const options = { weekday: 'short', month: 'short', day: 'numeric' };
+    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const date = now.toLocaleDateString('en-US', options);
+    document.getElementById('currentTime').innerHTML = `<i class="bi bi-clock me-1"></i>${time}<br><small class="text-muted">${date}</small>`;
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+// ── Live System Status ──────────────────────────────────────────────────
+const STATUS_STYLES = {
+    ok:      { cls: 'bg-success', icon: 'bi-check-circle' },
+    warning: { cls: 'bg-warning text-dark', icon: 'bi-exclamation-triangle' },
+    error:   { cls: 'bg-danger', icon: 'bi-x-circle' }
+};
+
+function setBadge(id, comp) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const s = STATUS_STYLES[comp.status] || STATUS_STYLES.warning;
+    el.className = 'badge ' + s.cls;
+    el.innerHTML = `<i class="bi ${s.icon} me-1"></i>${comp.message}`;
+}
+
+async function refreshSystemStatus() {
+    try {
+        const resp = await fetch('/api/system/status');
+        const data = await resp.json();
+        if (!data.success) return;
+        setBadge('statusCamera', data.components.camera);
+        setBadge('statusEngine', data.components.recognition_engine);
+        setBadge('statusDatabase', data.components.database);
+    } catch (err) {
+        ['statusCamera', 'statusEngine', 'statusDatabase'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.className = 'badge bg-danger'; el.textContent = 'Unreachable'; }
+        });
+    }
+}
+refreshSystemStatus();
+setInterval(refreshSystemStatus, 30000);
+</script>
+{% endblock %}
