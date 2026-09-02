@@ -1,0 +1,737 @@
+{% extends "base.html" %}
+
+{% block title %}Camera - Face Attendance{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="mb-1 fw-bold">
+            <i class="bi bi-camera-video me-2 text-primary"></i>Live Attendance
+        </h2>
+        <p class="text-muted mb-0">Use camera or upload image for face recognition</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <span class="time-display" id="currentTime"></span>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Camera Feed -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-camera-video me-2"></i>Camera Feed</span>
+                <div>
+                    <button id="startCamera" class="btn btn-sm btn-success me-1">
+                        <i class="bi bi-play-fill"></i> Start
+                    </button>
+                    <button id="stopCamera" class="btn btn-sm btn-danger me-1" style="display: none;">
+                        <i class="bi bi-stop-fill"></i> Stop
+                    </button>
+                    <button id="captureBtn" class="btn btn-sm btn-primary" disabled>
+                        <i class="bi bi-camera"></i> Capture
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="camera-container" id="cameraContainer">
+                    <!-- Video with overlay for bounding boxes -->
+                    <div style="position: relative; display: inline-block; width: 100%;">
+                        <video id="video" autoplay playsinline style="display: none; width: 100%;"></video>
+                        <canvas id="overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+                    </div>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <img id="capturedImage" class="w-100" style="display: none; max-height: 500px; object-fit: contain;" alt="Captured">
+                    
+                    <!-- Camera Placeholder -->
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        <i class="bi bi-camera-video-off"></i>
+                        <h5>Camera Not Active</h5>
+                        <p class="text-muted mb-3">Click "Start" to activate camera for face recognition</p>
+                        <button id="startCameraBig" class="btn btn-primary btn-lg">
+                            <i class="bi bi-play-circle me-2"></i>Start Camera
+                        </button>
+                    </div>
+
+                    <!-- Camera Status Overlay -->
+                    <div id="cameraStatus" class="camera-status" style="display: none;">
+                        <span class="recording-dot"></span>
+                        <span>LIVE</span>
+                    </div>
+
+                    <!-- Performance Overlay -->
+                    <div id="perfOverlay" class="camera-status" style="display: none; left: auto; right: 1rem;">
+                        <span id="fpsDisplay">FPS: 0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recognition Panel -->
+    <div class="col-lg-4 mb-4">
+        <!-- Recognition Status Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-person-check me-2"></i>Recognition Status
+            </div>
+            <div class="card-body">
+                <div id="recognitionStatus" class="recognition-status detecting">
+                    <div class="status-icon">
+                        <i class="bi bi-eye"></i>
+                    </div>
+                    <div class="status-name">Waiting for Camera</div>
+                    <div class="status-message">Start camera to begin recognition</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-speedometer me-2"></i>Performance
+            </div>
+            <div class="card-body p-0">
+                <div class="p-3">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="small text-muted">FPS</div>
+                            <div class="fw-bold text-primary" id="metricFPS">0</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">Detection</div>
+                            <div class="fw-bold text-info" id="metricDetection">0ms</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">Total</div>
+                            <div class="fw-bold text-success" id="metricTotal">0ms</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decision Engine Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-cpu me-2"></i>Decision Engine
+            </div>
+            <div class="card-body p-0">
+                <div class="p-3">
+                    <div id="decisionEngineStatus" class="text-center text-muted mb-3">
+                        <small>No decision data available</small>
+                    </div>
+                    
+                    <div id="decisionEngineDetails" style="display: none;">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small text-muted">Decision</span>
+                                <span id="decisionType" class="badge bg-secondary">-</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small text-muted">Uncertainty</span>
+                                <span id="uncertaintyState" class="badge bg-secondary">-</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small text-muted">Combined Score</span>
+                                <span id="combinedScore" class="fw-bold">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-2">Signal Breakdown</small>
+                            <div class="progress mb-1" style="height: 6px;">
+                                <div id="signalSimilarity" class="progress-bar bg-primary" style="width: 0%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between" style="font-size: 0.75rem;">
+                                <span>Similarity</span>
+                                <span id="signalSimilarityVal">0%</span>
+                            </div>
+                            
+                            <div class="progress mb-1" style="height: 6px;">
+                                <div id="signalLiveness" class="progress-bar bg-success" style="width: 0%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between" style="font-size: 0.75rem;">
+                                <span>Liveness</span>
+                                <span id="signalLivenessVal">0%</span>
+                            </div>
+                            
+                            <div class="progress mb-1" style="height: 6px;">
+                                <div id="signalQuality" class="progress-bar bg-info" style="width: 0%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between" style="font-size: 0.75rem;">
+                                <span>Quality</span>
+                                <span id="signalQualityVal">0%</span>
+                            </div>
+                            
+                            <div class="progress mb-1" style="height: 6px;">
+                                <div id="signalMargin" class="progress-bar bg-warning" style="width: 0%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between" style="font-size: 0.75rem;">
+                                <span>Margin</span>
+                                <span id="signalMarginVal">0%</span>
+                            </div>
+                        </div>
+                        
+                        <div id="decisionExplanation" class="small text-muted">
+                            <!-- Explanation text will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pipeline Status Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-diagram-3 me-2"></i>Pipeline Status
+            </div>
+            <div class="card-body p-0">
+                <div class="p-3">
+                    <div class="pipeline-step" id="step-validation">
+                        <div class="step-icon pending"><i class="bi bi-check2"></i></div>
+                        <div class="step-text">Frame Validation</div>
+                        <div class="step-status text-muted">Waiting</div>
+                    </div>
+                    <div class="pipeline-step" id="step-detection">
+                        <div class="step-icon pending"><i class="bi bi-check2"></i></div>
+                        <div class="step-text">Face Detection</div>
+                        <div class="step-status text-muted">Waiting</div>
+                    </div>
+                    <div class="pipeline-step" id="step-alignment">
+                        <div class="step-icon pending"><i class="bi bi-check2"></i></div>
+                        <div class="step-text">Face Alignment</div>
+                        <div class="step-status text-muted">Waiting</div>
+                    </div>
+                    <div class="pipeline-step" id="step-embedding">
+                        <div class="step-icon pending"><i class="bi bi-check2"></i></div>
+                        <div class="step-text">Face Embedding</div>
+                        <div class="step-status text-muted">Waiting</div>
+                    </div>
+                    <div class="pipeline-step" id="step-matching">
+                        <div class="step-icon pending"><i class="bi bi-check2"></i></div>
+                        <div class="step-text">Identity Matching</div>
+                        <div class="step-status text-muted">Waiting</div>
+                    </div>
+                    <div class="pipeline-step" id="step-attendance">
+                        <div class="step-icon pending"><i class="bi bi-check2"></i></div>
+                        <div class="step-text">Attendance Mark</div>
+                        <div class="step-status text-muted">Waiting</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Card -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-upload me-2"></i>Upload Image
+            </div>
+            <div class="card-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <input type="file" class="form-control" id="faceImage" accept="image/*" capture="environment">
+                        <div class="form-text">Upload a photo for face recognition</div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-outline-primary" id="uploadBtn">
+                            <i class="bi bi-search me-2"></i>Recognize Face
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const overlay = document.getElementById('overlay');
+    const overlayCtx = overlay.getContext('2d');
+    const capturedImage = document.getElementById('capturedImage');
+    const startBtn = document.getElementById('startCamera');
+    const startBtnBig = document.getElementById('startCameraBig');
+    const stopBtn = document.getElementById('stopCamera');
+    const captureBtn = document.getElementById('captureBtn');
+    const placeholder = document.getElementById('cameraPlaceholder');
+    const cameraStatus = document.getElementById('cameraStatus');
+    const perfOverlay = document.getElementById('perfOverlay');
+    const uploadForm = document.getElementById('uploadForm');
+
+    let stream = null;
+    let frameCount = 0;
+    let lastFpsTime = Date.now();
+    let recognitionInterval = null;
+    let isRecognizing = false;
+
+    // Start camera
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480, facingMode: 'user' }
+            });
+            video.srcObject = stream;
+            video.style.display = 'block';
+            placeholder.style.display = 'none';
+            capturedImage.style.display = 'none';
+            cameraStatus.style.display = 'flex';
+            perfOverlay.style.display = 'flex';
+            captureBtn.disabled = false;
+            startBtn.style.display = 'none';
+            startBtnBig.style.display = 'none';
+            stopBtn.style.display = 'inline-flex';
+            
+            // Setup overlay canvas
+            video.onloadedmetadata = function() {
+                overlay.width = video.videoWidth;
+                overlay.height = video.videoHeight;
+            };
+            
+            updateRecognitionStatus('detecting', 'Camera Active', 'Waiting for face...');
+            updatePipelineStep('validation', 'active', 'Ready');
+            
+            // Start FPS counter
+            frameCount = 0;
+            lastFpsTime = Date.now();
+            updateFPS();
+            
+            // Start real-time recognition
+            startRealtimeRecognition();
+            
+        } catch (err) {
+            updateRecognitionStatus('unknown', 'Camera Error', err.message);
+        }
+    }
+
+    // Stop camera
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        if (recognitionInterval) {
+            clearInterval(recognitionInterval);
+            recognitionInterval = null;
+        }
+        isRecognizing = false;
+        video.style.display = 'none';
+        overlay.style.width = '0';
+        placeholder.style.display = 'flex';
+        cameraStatus.style.display = 'none';
+        perfOverlay.style.display = 'none';
+        captureBtn.disabled = true;
+        startBtn.style.display = 'inline-flex';
+        startBtnBig.style.display = 'inline-flex';
+        stopBtn.style.display = 'none';
+        resetPipeline();
+        updateRecognitionStatus('detecting', 'Waiting for Camera', 'Start camera to begin recognition');
+    }
+
+    // Start real-time recognition
+    function startRealtimeRecognition() {
+        if (recognitionInterval) clearInterval(recognitionInterval);
+        
+        // Send frame for recognition every 500ms
+        recognitionInterval = setInterval(async () => {
+            if (!stream || isRecognizing) return;
+            
+            isRecognizing = true;
+            
+            try {
+                // Capture frame
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = video.videoWidth;
+                tempCanvas.height = video.videoHeight;
+                tempCanvas.getContext('2d').drawImage(video, 0, 0);
+                const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
+                
+                // Send for recognition
+                const response = await fetch('{{ url_for("attendance.recognize_realtime") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageData })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.faces && data.faces.length > 0) {
+                    handleRealtimeResult(data);
+                } else {
+                    // No faces detected
+                    clearOverlay();
+                    updateRecognitionStatus('detecting', 'Scanning...', 'Looking for faces...');
+                }
+                
+                // Update metrics
+                if (data.processing_time_ms) {
+                    document.getElementById('metricTotal').textContent = Math.round(data.processing_time_ms) + 'ms';
+                }
+                
+            } catch (err) {
+                console.error('Recognition error:', err);
+            }
+            
+            isRecognizing = false;
+        }, 500);
+    }
+
+    // Handle real-time recognition result
+    function handleRealtimeResult(data) {
+        clearOverlay();
+        
+        if (!data.faces || data.faces.length === 0) {
+            updateRecognitionStatus('detecting', 'Scanning...', 'Looking for faces...');
+            return;
+        }
+        
+        const face = data.faces[0]; // Primary face
+        
+        if (face.success && face.user_id > 0) {
+            // Recognized user
+            updateRecognitionStatus('recognized', face.full_name || face.employee_id, 
+                `Confidence: ${(face.confidence * 100).toFixed(1)}%`);
+            
+            // Draw green bounding box
+            if (face.face_location) {
+                drawBoundingBox(face.face_location, '#00ff00', face.full_name || face.employee_id);
+            }
+        } else {
+            // Unknown face
+            updateRecognitionStatus('unknown', 'Unknown Person', 'Face not registered');
+            
+            // Draw red bounding box
+            if (face.face_location) {
+                drawBoundingBox(face.face_location, '#ff0000', 'Unknown');
+            }
+        }
+        
+        // Update decision engine display if available
+        if (face.decision_result) {
+            updateDecisionEngineDisplay(face.decision_result);
+        }
+        
+        // Update pipeline steps
+        updatePipelineStep('validation', 'completed', 'Done');
+        updatePipelineStep('detection', 'completed', `${data.face_count} face(s)`);
+        updatePipelineStep('alignment', 'completed', 'Done');
+        updatePipelineStep('embedding', 'completed', 'Done');
+        updatePipelineStep('matching', 'completed', face.success ? 'Matched' : 'No match');
+        updatePipelineStep('attendance', 'pending', 'Waiting');
+    }
+
+    // Draw bounding box on overlay
+    function drawBoundingBox(faceLocation, color, label) {
+        if (!faceLocation || faceLocation.length < 4) return;
+        
+        const [top, right, bottom, left] = faceLocation;
+        const scaleX = overlay.width / video.videoWidth;
+        const scaleY = overlay.height / video.videoHeight;
+        
+        const x = left * scaleX;
+        const y = top * scaleY;
+        const w = (right - left) * scaleX;
+        const h = (bottom - top) * scaleY;
+        
+        overlayCtx.strokeStyle = color;
+        overlayCtx.lineWidth = 3;
+        overlayCtx.strokeRect(x, y, w, h);
+        
+        // Draw label background
+        overlayCtx.fillStyle = color;
+        const textHeight = 24;
+        overlayCtx.fillRect(x, y - textHeight - 5, w, textHeight);
+        
+        // Draw label text
+        overlayCtx.fillStyle = '#ffffff';
+        overlayCtx.font = 'bold 14px Arial';
+        overlayCtx.textAlign = 'center';
+        overlayCtx.fillText(label, x + w/2, y - 8);
+    }
+
+    // Clear overlay
+    function clearOverlay() {
+        overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+    }
+
+    // Update FPS display
+    function updateFPS() {
+        frameCount++;
+        const now = Date.now();
+        if (now - lastFpsTime >= 1000) {
+            const fps = Math.round(frameCount * 1000 / (now - lastFpsTime));
+            document.getElementById('fpsDisplay').textContent = `FPS: ${fps}`;
+            document.getElementById('metricFPS').textContent = fps;
+            frameCount = 0;
+            lastFpsTime = now;
+        }
+        if (stream) {
+            requestAnimationFrame(updateFPS);
+        }
+    }
+
+    // Capture photo (manual capture)
+    captureBtn.addEventListener('click', function() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        capturedImage.src = dataUrl;
+        capturedImage.style.display = 'block';
+        video.style.display = 'none';
+        overlay.style.display = 'none';
+        
+        // Pause real-time recognition
+        if (recognitionInterval) {
+            clearInterval(recognitionInterval);
+            recognitionInterval = null;
+        }
+        
+        updateRecognitionStatus('detecting', 'Processing...', 'Analyzing face...');
+        animatePipeline();
+        sendForRecognition(dataUrl);
+    });
+
+    // Upload form
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('faceImage');
+        if (fileInput.files.length === 0) {
+            alert('Please select an image');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('face_image', fileInput.files[0]);
+        
+        updateRecognitionStatus('detecting', 'Processing...', 'Analyzing uploaded image...');
+        animatePipeline();
+        
+        fetch('{{ url_for("attendance.recognize_and_mark") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => handleCaptureResult(data))
+        .catch(err => {
+            updateRecognitionStatus('unknown', 'Error', 'Network error');
+            resetPipeline();
+        });
+    });
+
+    function sendForRecognition(dataUrl) {
+        fetch(dataUrl)
+        .then(r => r.blob())
+        .then(blob => {
+            const formData = new FormData();
+            formData.append('face_image', blob, 'capture.jpg');
+            return fetch('{{ url_for("attendance.recognize_and_mark") }}', {
+                method: 'POST',
+                body: formData
+            });
+        })
+        .then(r => r.json())
+        .then(data => handleCaptureResult(data))
+        .catch(err => {
+            updateRecognitionStatus('unknown', 'Error', 'Recognition failed');
+            resetPipeline();
+        });
+    }
+
+    function handleCaptureResult(data) {
+        completePipeline();
+        
+        if (data.metrics) {
+            document.getElementById('metricDetection').textContent = data.metrics.detection_ms + 'ms';
+            document.getElementById('metricTotal').textContent = data.metrics.total_ms + 'ms';
+        }
+        
+        // Update decision engine display if available
+        if (data.decision_result) {
+            updateDecisionEngineDisplay(data.decision_result);
+        }
+        
+        if (data.success) {
+            updateRecognitionStatus('recognized', data.full_name || data.employee_id, 
+                `Attendance Marked - ${data.confidence ? (data.confidence * 100).toFixed(1) + '%' : ''}`);
+            updatePipelineStep('attendance', 'completed', 'Marked');
+            
+            setTimeout(() => {
+                if (stream) {
+                    video.style.display = 'block';
+                    overlay.style.display = 'block';
+                    capturedImage.style.display = 'none';
+                    updateRecognitionStatus('detecting', 'Camera Active', 'Waiting for next face...');
+                    resetPipeline();
+                    startRealtimeRecognition();
+                }
+            }, 3000);
+        } else {
+            updateRecognitionStatus('unknown', 'Unknown Person', data.message || 'Face not recognized');
+            setTimeout(() => {
+                if (stream) {
+                    video.style.display = 'block';
+                    overlay.style.display = 'block';
+                    capturedImage.style.display = 'none';
+                    updateRecognitionStatus('detecting', 'Camera Active', 'Waiting for face...');
+                    resetPipeline();
+                    startRealtimeRecognition();
+                }
+            }, 3000);
+        }
+    }
+
+    function updateRecognitionStatus(status, name, message) {
+        const el = document.getElementById('recognitionStatus');
+        el.className = `recognition-status ${status}`;
+        
+        const icons = {
+            detecting: '<i class="bi bi-eye"></i>',
+            recognized: '<i class="bi bi-check-circle"></i>',
+            unknown: '<i class="bi bi-question-circle"></i>'
+        };
+        
+        el.innerHTML = `
+            <div class="status-icon">${icons[status] || icons.detecting}</div>
+            <div class="status-name">${name}</div>
+            <div class="status-message">${message}</div>
+        `;
+    }
+
+    function updatePipelineStep(step, status, text) {
+        const el = document.getElementById(`step-${step}`);
+        if (el) {
+            el.className = `pipeline-step ${status}`;
+            el.querySelector('.step-icon').className = `step-icon ${status}`;
+            el.querySelector('.step-status').textContent = text;
+            el.querySelector('.step-status').className = `step-status ${status === 'active' ? 'text-primary' : status === 'completed' ? 'text-success' : 'text-muted'}`;
+        }
+    }
+
+    function animatePipeline() {
+        const steps = ['validation', 'detection', 'alignment', 'embedding', 'matching', 'attendance'];
+        steps.forEach((step, i) => {
+            setTimeout(() => updatePipelineStep(step, 'active', 'Processing...'), i * 200);
+        });
+    }
+
+    function completePipeline() {
+        const steps = ['validation', 'detection', 'alignment', 'embedding', 'matching', 'attendance'];
+        steps.forEach((step, i) => {
+            setTimeout(() => updatePipelineStep(step, 'completed', 'Done'), i * 100);
+        });
+    }
+
+    function resetPipeline() {
+        const steps = ['validation', 'detection', 'alignment', 'embedding', 'matching', 'attendance'];
+        steps.forEach(step => updatePipelineStep(step, 'pending', 'Waiting'));
+    }
+
+    function updateDecisionEngineDisplay(decisionResult) {
+        const statusEl = document.getElementById('decisionEngineStatus');
+        const detailsEl = document.getElementById('decisionEngineDetails');
+        
+        if (!decisionResult) {
+            statusEl.style.display = 'block';
+            detailsEl.style.display = 'none';
+            return;
+        }
+        
+        statusEl.style.display = 'none';
+        detailsEl.style.display = 'block';
+        
+        // Update decision type badge
+        const decisionTypeEl = document.getElementById('decisionType');
+        decisionTypeEl.textContent = decisionResult.decision || '-';
+        decisionTypeEl.className = 'badge';
+        
+        if (decisionResult.decision === 'accept') {
+            decisionTypeEl.classList.add('bg-success');
+        } else if (decisionResult.decision === 'reject') {
+            decisionTypeEl.classList.add('bg-danger');
+        } else if (decisionResult.decision === 'review') {
+            decisionTypeEl.classList.add('bg-warning');
+        } else {
+            decisionTypeEl.classList.add('bg-secondary');
+        }
+        
+        // Update uncertainty state badge
+        const uncertaintyEl = document.getElementById('uncertaintyState');
+        uncertaintyEl.textContent = decisionResult.uncertainty_state || '-';
+        uncertaintyEl.className = 'badge';
+        
+        if (decisionResult.uncertainty_state === 'high_confidence') {
+            uncertaintyEl.classList.add('bg-success');
+        } else if (decisionResult.uncertainty_state === 'low_confidence') {
+            uncertaintyEl.classList.add('bg-warning');
+        } else if (decisionResult.uncertainty_state === 'uncertain') {
+            uncertaintyEl.classList.add('bg-danger');
+        } else {
+            uncertaintyEl.classList.add('bg-secondary');
+        }
+        
+        // Update combined score
+        const combinedScore = decisionResult.combined_score || 0;
+        document.getElementById('combinedScore').textContent = (combinedScore * 100).toFixed(1) + '%';
+        
+        // Update signal breakdown
+        if (decisionResult.signal_breakdown) {
+            const breakdown = decisionResult.signal_breakdown;
+            
+            // Similarity
+            const similarity = breakdown.similarity_contribution || 0;
+            document.getElementById('signalSimilarity').style.width = (similarity * 100) + '%';
+            document.getElementById('signalSimilarityVal').textContent = (similarity * 100).toFixed(1) + '%';
+            
+            // Liveness
+            const liveness = breakdown.liveness_contribution || 0;
+            document.getElementById('signalLiveness').style.width = (liveness * 100) + '%';
+            document.getElementById('signalLivenessVal').textContent = (liveness * 100).toFixed(1) + '%';
+            
+            // Quality
+            const quality = breakdown.quality_contribution || 0;
+            document.getElementById('signalQuality').style.width = (quality * 100) + '%';
+            document.getElementById('signalQualityVal').textContent = (quality * 100).toFixed(1) + '%';
+            
+            // Margin
+            const margin = breakdown.margin_contribution || 0;
+            document.getElementById('signalMargin').style.width = (margin * 100) + '%';
+            document.getElementById('signalMarginVal').textContent = (margin * 100).toFixed(1) + '%';
+        }
+        
+        // Update explanation
+        if (decisionResult.explanation) {
+            const explanationEl = document.getElementById('decisionExplanation');
+            let explanationText = '';
+            
+            if (decisionResult.explanation.primary_reason) {
+                explanationText += `<strong>Reason:</strong> ${decisionResult.explanation.primary_reason}<br>`;
+            }
+            if (decisionResult.explanation.signal_assessment) {
+                explanationText += `<strong>Signals:</strong> ${decisionResult.explanation.signal_assessment}`;
+            }
+            
+            explanationEl.innerHTML = explanationText;
+        }
+    }
+
+    // Event listeners
+    startBtn.addEventListener('click', startCamera);
+    startBtnBig.addEventListener('click', startCamera);
+    stopBtn.addEventListener('click', stopCamera);
+
+    // Update time
+    function updateTime() {
+        const now = new Date();
+        const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('currentTime').innerHTML = `<i class="bi bi-clock me-1"></i>${time}`;
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+});
+</script>
+{% endblock %}

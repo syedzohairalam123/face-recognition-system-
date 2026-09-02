@@ -1,0 +1,54 @@
+# Vercel Ignore - Files to exclude from deployment
+
+# Test files
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data files (ephemeral on Vercel)
+data/face_data/
+data/uploads/
+data/*.db
+data/app.log
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+.env.local
+
+# Build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Dev tools
+start_server.bat
+seed_data.py
+pyproject.toml
+
+# Camera/face recognition dependencies (not available on Vercel)
+opencv_python*
+numpy*
+dlib*
+face_recognition*
+
+# Logs
+*.log

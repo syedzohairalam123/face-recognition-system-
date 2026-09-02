@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Users - Face Attendance{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="mb-1 fw-bold">
+            <i class="bi bi-people me-2 text-primary"></i>User Management
+        </h2>
+        <p class="text-muted mb-0">Manage employees and their face registrations</p>
+    </div>
+    <div class="col-md-4 text-end">
+        {% if session.get('user_role') == 'admin' %}
+        <a href="{{ url_for('user.add_user') }}" class="btn btn-primary">
+            <i class="bi bi-person-plus me-2"></i>Add New User
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card primary h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-people"></i></div>
+                    <div>
+                        <div class="stat-value text-primary">{{ stats.total_users }}</div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card success h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-person-check"></i></div>
+                    <div>
+                        <div class="stat-value text-success">{{ stats.active_users }}</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card info h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-emoji-smile"></i></div>
+                    <div>
+                        <div class="stat-value text-info">{{ stats.face_registered }}</div>
+                        <div class="stat-label">Face Registered</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card warning h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-emoji-neutral"></i></div>
+                    <div>
+                        <div class="stat-value text-warning">{{ stats.face_pending }}</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Bar & Status Filters -->
+<div class="row mb-4 g-3">
+    <div class="col-md-6">
+        <form method="GET" action="{{ url_for('user.list_users') }}">
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" name="search" placeholder="Search by name, ID, or email..." value="{{ search }}">
+                {% if search %}
+                <a href="{{ url_for('user.list_users') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x"></i>
+                </a>
+                {% endif %}
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-6">
+        <div class="btn-group w-100" role="group">
+            <a href="{{ url_for('user.list_users', status='all', search=search) }}"
+               class="btn btn-sm {{ 'btn-primary' if status_filter == 'all' else 'btn-outline-primary' }}">All</a>
+            <a href="{{ url_for('user.list_users', status='active', search=search) }}"
+               class="btn btn-sm {{ 'btn-success' if status_filter == 'active' else 'btn-outline-success' }}">Active</a>
+            <a href="{{ url_for('user.list_users', status='inactive', search=search) }}"
+               class="btn btn-sm {{ 'btn-danger' if status_filter == 'inactive' else 'btn-outline-danger' }}">Inactive</a>
+            <a href="{{ url_for('user.list_users', status='face_pending', search=search) }}"
+               class="btn btn-sm {{ 'btn-warning' if status_filter == 'face_pending' else 'btn-outline-warning' }}">Face Pending</a>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Role</th>
+                        <th>Face</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr class="animate-fadeIn" style="animation-delay: {{ loop.index0 * 0.03 }}s">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="user-avatar me-2" style="width: 40px; height: 40px; font-size: 0.9rem;">
+                                    {{ user.first_name[0] }}{{ user.last_name[0] }}
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">{{ user.full_name }}</div>
+                                    <small class="text-muted">{{ user.employee_id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="text-muted">{{ user.email }}</span></td>
+                        <td>{{ user.department or '-' }}</td>
+                        <td><span class="badge bg-secondary">{{ user.role|title }}</span></td>
+                        <td>
+                            {% if user.face_registered %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Registered</span>
+                            {% else %}
+                            <span class="badge bg-warning"><i class="bi bi-exclamation-circle me-1"></i>Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('user.view_user', user_id=user.id) }}" class="btn btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if session.get('user_role') == 'admin' %}
+                                <a href="{{ url_for('user.edit_user', user_id=user.id) }}" class="btn btn-outline-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% if not user.face_registered %}
+                                <a href="{{ url_for('user.register_face', user_id=user.id) }}" class="btn btn-outline-success" title="Register Face">
+                                    <i class="bi bi-camera"></i>
+                                </a>
+                                {% endif %}
+                                {% if user.is_active %}
+                                {% if session.get('user_id') != user.id %}
+                                <button type="button" class="btn btn-outline-danger" title="Deactivate"
+                                        onclick="confirmDeactivate({{ user.id }}, '{{ user.full_name }}')">
+                                    <i class="bi bi-person-x"></i>
+                                </button>
+                                {% endif %}
+                                {% else %}
+                                <form method="POST" action="{{ url_for('user.reactivate_user', user_id=user.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-outline-success" title="Reactivate">
+                                        <i class="bi bi-person-check"></i>
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-outline-danger" title="Delete Permanently"
+                                        onclick="confirmDelete({{ user.id }}, '{{ user.full_name }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-people"></i>
+            <h5>No Users Found</h5>
+            <p>{% if search %}No users match your search criteria{% else %}Get started by adding your first user{% endif %}</p>
+            <a href="{{ url_for('user.add_user') }}" class="btn btn-primary">
+                <i class="bi bi-person-plus me-2"></i>Add First User
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Permanent Deletion Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-octagon text-danger me-2"></i>Delete User Permanently
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to <strong class="text-danger">permanently delete</strong> <strong id="deleteUserName"></strong>?</p>
+                <div class="alert alert-danger small mb-0">
+                    <i class="bi bi-warning me-1"></i>This will erase the user, their face data,
+                    and their entire attendance history. This cannot be undone!
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Delete Forever
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deactivation Confirmation Modal -->
+<div class="modal fade" id="deactivateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>Deactivate User
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to deactivate <strong id="deactivateUserName"></strong>?</p>
+                <p class="text-muted small">This will soft-delete the user. Their attendance history will be preserved.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deactivateForm" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-person-x me-1"></i>Deactivate
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDeactivate(userId, userName) {
+    document.getElementById('deactivateUserName').textContent = userName;
+    document.getElementById('deactivateForm').action = '/users/' + userId + '/deactivate';
+    new bootstrap.Modal(document.getElementById('deactivateModal')).show();
+}
+
+function confirmDelete(userId, userName) {
+    document.getElementById('deleteUserName').textContent = userName;
+    document.getElementById('deleteForm').action = '/users/' + userId + '/delete';
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

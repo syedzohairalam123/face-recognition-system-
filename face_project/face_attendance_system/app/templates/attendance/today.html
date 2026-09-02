@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Today's Attendance - Face Attendance{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="mb-1 fw-bold">
+            <i class="bi bi-calendar-check me-2 text-primary"></i>Today's Attendance
+        </h2>
+        <p class="text-muted mb-0">View and manage today's attendance records</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('attendance.history') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-calendar me-2"></i>View History
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card success h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-person-check"></i></div>
+                    <div>
+                        <div class="stat-value text-success">{{ stats.total_checked_in }}</div>
+                        <div class="stat-label">Checked In</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card info h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-person-dash"></i></div>
+                    <div>
+                        <div class="stat-value text-info">{{ stats.total_checked_out }}</div>
+                        <div class="stat-label">Checked Out</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card primary h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-people"></i></div>
+                    <div>
+                        <div class="stat-value text-primary">{{ stats.total_active_users }}</div>
+                        <div class="stat-label">Active Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card warning h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-percent"></i></div>
+                    <div>
+                        <div class="stat-value text-warning">{{ stats.attendance_rate }}%</div>
+                        <div class="stat-label">Attendance Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Check-in/out -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-box-arrow-in-right me-2 text-success"></i>Manual Check-In
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('attendance.check_in') }}">
+                    <div class="input-group">
+                        <select class="form-select" name="user_id" required>
+                            <option value="">Select Employee...</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.employee_id }} - {{ user.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-1"></i>Check In
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-box-arrow-right me-2 text-info"></i>Manual Check-Out
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('attendance.check_out') }}">
+                    <div class="input-group">
+                        <select class="form-select" name="user_id" required>
+                            <option value="">Select Employee...</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.employee_id }} - {{ user.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-info">
+                            <i class="bi bi-check-lg me-1"></i>Check Out
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Records Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul me-2"></i>Today's Records</span>
+        <span class="badge bg-primary">{{ records|length }}</span>
+    </div>
+    <div class="card-body p-0">
+        {% if records %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Department</th>
+                        <th>Check In</th>
+                        <th>Check Out</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                    <tr class="animate-fadeIn" style="animation-delay: {{ loop.index0 * 0.03 }}s">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="user-avatar me-2" style="width: 36px; height: 36px; font-size: 0.875rem;">
+                                    {{ record.employee_name[0] if record.employee_name else '?' }}
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">{{ record.employee_name }}</div>
+                                    <small class="text-muted">{{ record.employee_id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ record.department or '-' }}</td>
+                        <td><span class="text-muted">{{ record.check_in_time }}</span></td>
+                        <td><span class="text-muted">{{ record.check_out_time or '-' }}</span></td>
+                        <td>
+                            {% if record.duration_minutes %}
+                            <span class="badge bg-secondary">{{ record.duration_minutes|round(0)|int }} min</span>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ record.status_color }}">
+                                <i class="bi bi-{% if record.status == 'present' %}check-circle{% elif record.status == 'checked_out' %}clock{% else %}x-circle{% endif %} me-1"></i>
+                                {{ record.status|replace('_', ' ')|title }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if record.confidence_score %}
+                            <div class="d-flex align-items-center">
+                                <div class="progress flex-grow-1 me-2" style="width: 60px; height: 6px;">
+                                    <div class="progress-bar bg-{{ 'success' if record.confidence_score > 0.9 else 'warning' }}" style="width: {{ record.confidence_score * 100 }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ "%.0f"|format(record.confidence_score * 100) }}%</small>
+                            </div>
+                            {% else %}
+                            <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <h5>No Records Today</h5>
+            <p>Start by opening the camera to mark attendance</p>
+            <a href="{{ url_for('main.camera') }}" class="btn btn-primary">
+                <i class="bi bi-camera-video me-2"></i>Open Camera
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

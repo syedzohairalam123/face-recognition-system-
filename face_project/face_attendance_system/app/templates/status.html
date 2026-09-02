@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}System Status - Face Attendance{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="mb-1 fw-bold">
+            <i class="bi bi-gear-wide-connected me-2 text-primary"></i>System Status
+        </h2>
+        <p class="text-muted mb-0">Monitor system health, performance, and configuration</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <button class="btn btn-primary" onclick="refreshStatus()">
+            <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+        </button>
+    </div>
+</div>
+
+<!-- Health Status Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card primary h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-heart-pulse"></i></div>
+                    <div>
+                        <div class="stat-value text-primary" id="healthStatus">Loading...</div>
+                        <div class="stat-label">System Health</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card success h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-speedometer"></i></div>
+                    <div>
+                        <div class="stat-value text-success" id="fpsValue">0</div>
+                        <div class="stat-label">Current FPS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card info h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-clock-history"></i></div>
+                    <div>
+                        <div class="stat-value text-info" id="uptimeValue">0s</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card warning h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon me-3"><i class="bi bi-camera-video"></i></div>
+                    <div>
+                        <div class="stat-value text-warning" id="cameraStatus">Checking...</div>
+                        <div class="stat-label">Camera Status</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Metrics & Configuration -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-graph-up me-2"></i>Performance Metrics
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td class="text-muted">FPS</td>
+                        <td class="fw-bold" id="mFPS">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Avg Detection Time</td>
+                        <td class="fw-bold" id="mDetection">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Avg Recognition Time</td>
+                        <td class="fw-bold" id="mRecognition">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Avg Total Processing</td>
+                        <td class="fw-bold" id="mTotal">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Total Frames Processed</td>
+                        <td class="fw-bold" id="mFrames">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Avg DB Latency</td>
+                        <td class="fw-bold" id="mDBLatency">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">DB Queries Tracked</td>
+                        <td class="fw-bold" id="mDBQueries">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Frames Skipped</td>
+                        <td class="fw-bold" id="mFramesSkipped">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Skip Interval</td>
+                        <td class="fw-bold" id="mSkipInterval">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-cpu me-2"></i>System Configuration
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td class="text-muted">Face Recognition Library</td>
+                        <td><span class="badge" id="frLib">-</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Detection Model</td>
+                        <td id="cfgDetection">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Recognition Tolerance</td>
+                        <td id="cfgTolerance">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Known Faces Loaded</td>
+                        <td id="cfgKnownFaces">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Auto-Mark Attendance</td>
+                        <td id="cfgAutoMark">-</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Liveness Detection</td>
+                        <td><span class="badge bg-secondary" id="livenessStatus">Checking...</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Database Stats -->
+<div class="row mb-4">
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-people text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0" id="dbUsers">-</h3>
+                <p class="text-muted">Registered Users</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-person-check text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0" id="dbFaces">-</h3>
+                <p class="text-muted">Face Registered</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-check text-info" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0" id="dbAttendance">-</h3>
+                <p class="text-muted">Today's Records</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pipeline Visualization -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-diagram-3 me-2"></i>Recognition Pipeline
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-2">
+                        <div class="p-3 rounded bg-light">
+                            <i class="bi bi-camera-video text-primary" style="font-size: 1.5rem;"></i>
+                            <div class="small fw-bold mt-1">Camera</div>
+                            <div class="small text-muted">Frame Capture</div>
+                        </div>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-arrow-right text-muted"></i>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-3 rounded bg-light">
+                            <i class="bi bi-shield-check text-info" style="font-size: 1.5rem;"></i>
+                            <div class="small fw-bold mt-1">Validation</div>
+                            <div class="small text-muted">Frame Quality</div>
+                        </div>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-arrow-right text-muted"></i>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-3 rounded bg-light">
+                            <i class="bi bi-search text-warning" style="font-size: 1.5rem;"></i>
+                            <div class="small fw-bold mt-1">Detection</div>
+                            <div class="small text-muted">Face Finding</div>
+                        </div>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-arrow-right text-muted"></i>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-3 rounded bg-light">
+                            <i class="bi bi-person-bounding-box text-success" style="font-size: 1.5rem;"></i>
+                            <div class="small fw-bold mt-1">Recognition</div>
+                            <div class="small text-muted">Identity Match</div>
+                        </div>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-arrow-right text-muted"></i>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-3 rounded bg-light">
+                            <i class="bi bi-shield-check text-danger" style="font-size: 1.5rem;"></i>
+                            <div class="small fw-bold mt-1">Liveness</div>
+                            <div class="small text-muted">Anti-Spoof</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function refreshStatus() {
+    try {
+        const perfResp = await fetch('/api/performance');
+        const perfData = await perfResp.json();
+        
+        if (perfData.success) {
+            const m = perfData.metrics;
+            const h = perfData.health;
+            
+            document.getElementById('healthStatus').textContent = h.status.charAt(0).toUpperCase() + h.status.slice(1);
+            document.getElementById('fpsValue').textContent = m.fps;
+            document.getElementById('uptimeValue').textContent = formatUptime(m.uptime_seconds);
+            
+            document.getElementById('mFPS').textContent = m.fps;
+            document.getElementById('mDetection').textContent = m.avg_detection_ms + 'ms';
+            document.getElementById('mRecognition').textContent = m.avg_recognition_ms + 'ms';
+            document.getElementById('mTotal').textContent = m.avg_total_ms + 'ms';
+            document.getElementById('mFrames').textContent = m.total_frames;
+            document.getElementById('mDBLatency').textContent = (m.avg_db_latency_ms || 0) + 'ms';
+            document.getElementById('mDBQueries').textContent = m.db_query_count || 0;
+            if (m.frame_skip) {
+                document.getElementById('mFramesSkipped').textContent = m.frame_skip.frames_skipped + ' (' + m.frame_skip.skip_ratio + '%)';
+                document.getElementById('mSkipInterval').textContent = 'Every ' + m.frame_skip.skip_interval + ' frames';
+            }
+        }
+        
+        const pipeResp = await fetch('/api/pipeline');
+        const pipeData = await pipeResp.json();
+        
+        if (pipeData.success) {
+            const p = pipeData.pipeline;
+            const frLib = document.getElementById('frLib');
+            if (p.face_recognition_available) {
+                frLib.textContent = 'Available';
+                frLib.className = 'badge bg-success';
+            } else {
+                frLib.textContent = 'Not Installed';
+                frLib.className = 'badge bg-warning';
+            }
+            document.getElementById('cfgDetection').textContent = p.detector.model;
+            document.getElementById('cfgTolerance').textContent = p.recognizer ? p.recognizer.tolerance : '-';
+            document.getElementById('cfgKnownFaces').textContent = p.recognizer ? p.recognizer.known_faces : 0;
+            document.getElementById('cfgAutoMark').textContent = p.auto_mark_attendance ? 'Yes' : 'No';
+            if (p.liveness) {
+                var livenessBadge = document.getElementById('livenessStatus');
+                if (livenessBadge) {
+                    livenessBadge.textContent = 'Enabled (' + p.liveness.min_checks_required + '/' + p.liveness.total_checks + ' checks)';
+                    livenessBadge.className = 'badge bg-success';
+                }
+            }
+        }
+        
+        const usersResp = await fetch('/api/users');
+        const usersData = await usersResp.json();
+        
+        if (usersData.success) {
+            document.getElementById('dbUsers').textContent = usersData.count;
+            const faceRegistered = usersData.users.filter(u => u.face_registered).length;
+            document.getElementById('dbFaces').textContent = faceRegistered;
+        }
+        
+        const attResp = await fetch('/api/attendance/stats');
+        const attData = await attResp.json();
+        
+        if (attData.stats) {
+            document.getElementById('dbAttendance').textContent = attData.stats.total_checked_in;
+        }
+        
+    } catch (err) {
+        console.error('Error refreshing status:', err);
+    }
+}
+
+function formatUptime(seconds) {
+    if (seconds < 60) return Math.round(seconds) + 's';
+    if (seconds < 3600) return Math.round(seconds / 60) + 'm';
+    return Math.round(seconds / 3600 * 10) / 10 + 'h';
+}
+
+refreshStatus();
+setInterval(refreshStatus, 5000);
+</script>
+{% endblock %}

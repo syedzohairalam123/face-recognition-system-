@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance History - Face Attendance{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="mb-1 fw-bold">
+            <i class="bi bi-calendar-week me-2 text-primary"></i>Attendance History
+        </h2>
+        <p class="text-muted mb-0">Search, filter, and analyze attendance records</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="dropdown">
+            <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-download me-2"></i>Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <a class="dropdown-item" href="{{ url_for('attendance.export_csv', date_from=date_from or '', date_to=date_to or selected_date, user_id=user_filter or '', status=status_filter, department=department_filter, search=search_query) }}">
+                        <i class="bi bi-filetype-csv me-2"></i>Export as CSV
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ url_for('attendance.export_excel', date_from=date_from or '', date_to=date_to or selected_date, user_id=user_filter or '', status=status_filter, department=department_filter, search=search_query) }}">
+                        <i class="bi bi-file-earmark-excel me-2"></i>Export as Excel
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Panel -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         data-bs-toggle="collapse" data-bs-target="#filterPanel" role="button"
+         style="cursor: pointer;">
+        <span>
+            <i class="bi bi-funnel me-2"></i>Filters & Search
+            {% if user_filter or status_filter != 'all' or department_filter != 'all' or search_query %}
+            <span class="badge bg-primary ms-1">Active</span>
+            {% endif %}
+        </span>
+        <i class="bi bi-chevron-down" id="filterToggleIcon"></i>
+    </div>
+    <div class="collapse show" id="filterPanel">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('attendance.history') }}" id="filterForm">
+                <!-- Row 1: Date Range + Search -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">From Date</label>
+                        <input type="date" class="form-control" name="date_from" value="{{ date_from or '' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">To Date</label>
+                        <input type="date" class="form-control" name="date_to" value="{{ date_to or selected_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Employee</label>
+                        <select class="form-select" name="user_id">
+                            <option value="">All Employees</option>
+                            {% for u in all_users %}
+                            <option value="{{ u.id }}" {{ 'selected' if user_filter == u.id }}>
+                                {{ u.employee_id }} - {{ u.first_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Status</label>
+                        <select class="form-select" name="status">
+                            <option value="all" {{ 'selected' if status_filter == 'all' }}>All Status</option>
+                            <option value="present" {{ 'selected' if status_filter == 'present' }}>Present</option>
+                            <option value="late" {{ 'selected' if status_filter == 'late' }}>Late</option>
+                            <option value="checked_out" {{ 'selected' if status_filter == 'checked_out' }}>Checked Out</option>
+                            <option value="absent" {{ 'selected' if status_filter == 'absent' }}>Absent</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Department</label>
+                        <select class="form-select" name="department">
+                            <option value="all" {{ 'selected' if department_filter == 'all' }}>All Depts</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept }}" {{ 'selected' if department_filter == dept }}>{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Search</label>
+                        <input type="text" class="form-control" name="search"
+                               placeholder="Name, ID..." value="{{ search_query }}">
+                    </div>
+                </div>
+
+                <!-- Row 2: Sort + Actions -->
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Sort By</label>
+                        <select class="form-select" name="sort" onchange="this.form.submit()">
+                            <option value="date_desc" {{ 'selected' if sort_by == 'date_desc' }}>Date (Newest)</option>
+                            <option value="date_asc" {{ 'selected' if sort_by == 'date_asc' }}>Date (Oldest)</option>
+                            <option value="name_asc" {{ 'selected' if sort_by == 'name_asc' }}>Name (A-Z)</option>
+                            <option value="name_desc" {{ 'selected' if sort_by == 'name_desc' }}>Name (Z-A)</option>
+                            <option value="status_asc" {{ 'selected' if sort_by == 'status_asc' }}>Status (A-Z)</option>
+                            <option value="status_desc" {{ 'selected' if sort_by == 'status_desc' }}>Status (Z-A)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-1"></i>Apply Filters
+                            </button>
+                            <a href="{{ url_for('attendance.history') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset All
+                            </a>
+                            <span class="align-self-center text-muted small ms-2">
+                                <i class="bi bi-list-ul me-1"></i>
+                                <strong>{{ result_count }}</strong> record{{ 's' if result_count != 1 }} found
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Records Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history me-2"></i>Attendance Records</span>
+        <span class="badge bg-primary">{{ result_count }} records</span>
+    </div>
+    <div class="card-body p-0">
+        {% if records %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>
+                            <a href="?sort={{ 'name_desc' if sort_by == 'name_asc' else 'name_asc' }}&date_from={{ date_from or '' }}&date_to={{ date_to or selected_date }}&user_id={{ user_filter or '' }}&status={{ status_filter }}&department={{ department_filter }}&search={{ search_query }}"
+                               class="text-decoration-none text-dark">
+                                Employee
+                                {% if sort_by == 'name_asc' %}<i class="bi bi-arrow-up"></i>
+                                {% elif sort_by == 'name_desc' %}<i class="bi bi-arrow-down"></i>
+                                {% else %}<i class="bi bi-arrow-down-up text-muted"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th>Department</th>
+                        <th>
+                            <a href="?sort={{ 'date_asc' if sort_by == 'date_desc' else 'date_desc' }}&date_from={{ date_from or '' }}&date_to={{ date_to or selected_date }}&user_id={{ user_filter or '' }}&status={{ status_filter }}&department={{ department_filter }}&search={{ search_query }}"
+                               class="text-decoration-none text-dark">
+                                Check In
+                                {% if sort_by == 'date_asc' %}<i class="bi bi-arrow-up"></i>
+                                {% elif sort_by == 'date_desc' %}<i class="bi bi-arrow-down"></i>
+                                {% else %}<i class="bi bi-arrow-down-up text-muted"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th>Check Out</th>
+                        <th>Duration</th>
+                        <th>
+                            <a href="?sort={{ 'status_asc' if sort_by == 'status_desc' else 'status_desc' }}&date_from={{ date_from or '' }}&date_to={{ date_to or selected_date }}&user_id={{ user_filter or '' }}&status={{ status_filter }}&department={{ department_filter }}&search={{ search_query }}"
+                               class="text-decoration-none text-dark">
+                                Status
+                                {% if sort_by == 'status_asc' %}<i class="bi bi-arrow-up"></i>
+                                {% elif sort_by == 'status_desc' %}<i class="bi bi-arrow-down"></i>
+                                {% else %}<i class="bi bi-arrow-down-up text-muted"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                    <tr class="animate-fadeIn" style="animation-delay: {{ loop.index0 * 0.02 }}s">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="user-avatar me-2" style="width: 36px; height: 36px; font-size: 0.8rem;">
+                                    {{ record.employee_name[0] if record.employee_name else '?' }}
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">{{ record.employee_name }}</div>
+                                    <small class="text-muted">{{ record.employee_id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="text-muted">{{ record.department or '-' }}</span></td>
+                        <td><span class="text-muted">{{ record.check_in_time }}</span></td>
+                        <td><span class="text-muted">{{ record.check_out_time or '-' }}</span></td>
+                        <td>
+                            {% if record.duration_minutes %}
+                            <span class="badge bg-secondary">{{ record.duration_minutes|round(0)|int }} min</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ record.status_color }}">
+                                <i class="bi bi-{% if record.status == 'present' %}check-circle{% elif record.status == 'late' %}alarm{% elif record.status == 'checked_out' %}clock{% else %}x-circle{% endif %} me-1"></i>
+                                {{ record.status|replace('_', ' ')|title }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if record.confidence_score %}
+                            <div class="d-flex align-items-center">
+                                <div class="progress flex-grow-1 me-2" style="width: 50px; height: 5px;">
+                                    <div class="progress-bar bg-{{ 'success' if record.confidence_score > 0.9 else 'warning' }}" style="width: {{ record.confidence_score * 100 }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ "%.0f"|format(record.confidence_score * 100) }}%</small>
+                            </div>
+                            {% else %}
+                            <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-calendar-x"></i>
+            <h5>No Records Found</h5>
+            <p>{% if search_query or user_filter or status_filter != 'all' or department_filter != 'all' %}
+                No records match your filter criteria. Try adjusting the filters.
+            {% else %}
+                No attendance records found for {{ selected_date }}
+            {% endif %}</p>
+            <a href="{{ url_for('attendance.history') }}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
